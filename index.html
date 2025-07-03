@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Contextual Alt Text Creator for Any LMS</title>
+    <title>Contextual Alt Text Creator</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
@@ -97,7 +97,7 @@
 </head>
 <body class="p-4">
     <div class="container">
-        <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">Contextual Alt Text Creator for Any LMS</h1>
+        <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">Contextual Alt Text Creator</h1>
         <p class="text-center text-gray-600 mb-8">Generate accessible, context-aware alt text for your images across any Learning Management System. This tool uses surrounding paragraphs and image details to create precise, UK English descriptions that enhance learning for all students, adhering to WCAG 2.1 AA.</p>
 
         <div class="space-y-6">
@@ -152,9 +152,9 @@
                     </div>
                 </div>
 
-                <!-- Comprehensive Alt Text Output (for Any LMS) -->
+                <!-- Comprehensive Alt Text Output -->
                 <div>
-                    <label class="block text-gray-700 text-sm font-semibold mb-2">Comprehensive Alt Text (for Any LMS):</label>
+                    <label class="block text-gray-700 text-sm font-semibold mb-2">Comprehensive Alt Text:</label>
                     <div class="output-box" id="comprehensiveAltTextOutput">
                         <button class="copy-button" onclick="copyToClipboard('comprehensiveAltTextOutput')">Copy</button>
                         <span class="output-content"></span>
@@ -405,7 +405,7 @@
             Generate the following:
             1.  shortDescription: A concise phrase (under 15 words) identifying the image's primary subject or type.
             2.  detailedScreenreaderExplanation: A comprehensive description (up to 150 words) of the image's key visual elements and its educational relevance, explaining what is in the image and why it's there based on context.
-            3.  comprehensiveAltText: A single string of alt text that seamlessly integrates the educational purpose from the pre-image paragraph with the visual content and leads into the post-image paragraph. This should be a direct continuation of the pre-text, ready for any LMS. If the image is purely decorative and adds no instructional value based on the context, this should be an empty string ("").
+            3.  comprehensiveAltText: A single string of alt text that seamlessly integrates the educational purpose from the pre-image paragraph with the visual content and leads into the post-image paragraph. This should be a direct continuation of the pre-text. If the image is purely decorative and adds no instructional value based on the context, this should be an empty string ("").
 
             Ensure all spellings and phrasing adhere to UK English conventions.
             Output format: JSON with keys 'shortDescription', 'detailedScreenreaderExplanation', 'comprehensiveAltText'.`;
