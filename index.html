@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contextual Alt Text Creator</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6; /* Light grey background */
+        }
+        .container {
+            max-width: 900px;
+            margin: 2rem auto;
+            padding: 1.5rem;
+            background-color: #ffffff;
+            border-radius: 1rem; /* Rounded corners */
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        button {
+            transition: background-color 0.3s ease, transform 0.1s ease;
+        }
+        button:hover {
+            transform: translateY(-1px);
+        }
+        button:active {
+            transform: translateY(0);
+        }
+        .output-box {
+            background-color: #f9fafb;
+            border: 1px solid #e5e7eb;
+            padding: 1rem;
+            border-radius: 0.75rem;
+            word-wrap: break-word;
+            white-space: pre-wrap; /* Preserve whitespace and line breaks */
+            font-size: 0.9rem;
+            color: #374151;
+            position: relative; /* For copy button positioning */
+        }
+        .copy-button {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            background-color: #e0e7ff; /* Light blue */
+            color: #4f46e5; /* Darker blue */
+            padding: 0.3rem 0.6rem;
+            border-radius: 0.5rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: background-color 0.2s ease;
+        }
+        .copy-button:hover {
+            background-color: #c7d2fe;
+        }
+        .loading-spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: #6366f1; /* Indigo */
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            vertical-align: middle;
+            margin-left: 0.5rem;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .image-preview-container {
+            border: 1px dashed #cbd5e1;
+            border-radius: 0.75rem;
+            padding: 1rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 150px;
+            background-color: #f8fafc;
+            overflow: hidden;
+        }
+        .image-preview {
+            max-width: 100%;
+            max-height: 200px;
+            border-radius: 0.5rem;
+            object-fit: contain;
+        }
+    </style>
+</head>
+<body class="p-4">
+    <div class="container">
+        <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">Contextual Alt Text Creator</h1>
+        <p class="text-center text-gray-600 mb-8">Generate accessible, context-aware alt text for your Canvas images. This tool uses surrounding paragraphs and image details to create precise, UK English descriptions that enhance learning for all students, adhering to WCAG 2.1 AA.</p>
+
+        <div class="space-y-6">
+            <!-- Pre-Image Paragraph Input -->
+            <div>
+                <label for="preText" class="block text-gray-700 text-sm font-semibold mb-2">Paragraph before the image (Pre-Text):</label>
+                <textarea id="preText" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none" placeholder="E.g., 'Mitochondria are often called the "powerhouses" of the cell because they generate most of the cell's supply of adenosine triphosphate (ATP), used as a source of chemical energy. This complex process involves multiple stages within different compartments of the mitochondrion, as shown in the following diagram.'"></textarea>
+            </div>
+
+            <!-- Image Upload Input -->
+            <div>
+                <label for="imageUpload" class="block text-gray-700 text-sm font-semibold mb-2">Upload Image (JPG, PNG, SVG):</label>
+                <input type="file" id="imageUpload" accept="image/jpeg, image/png, image/svg+xml" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer">
+                <div class="image-preview-container mt-4">
+                    <img id="imagePreview" class="image-preview hidden" alt="Image Preview">
+                    <span id="previewPlaceholder" class="text-gray-400">No image selected</span>
+                </div>
+                <p class="text-xs text-gray-500 mt-1">Your image will be processed by Google Cloud Vision API for visual analysis.</p>
+            </div>
+
+            <!-- Post-Image Paragraph Input -->
+            <div>
+                <label for="postText" class="block text-gray-700 text-sm font-semibold mb-2">Paragraph after the image (Post-Text):</label>
+                <textarea id="postText" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none" placeholder="E.g., 'Understanding the spatial arrangement of these processes within the mitochondrion is crucial for comprehending how efficiently energy is produced. Each fold, known as a crista, plays a vital role in increasing the surface area for ATP synthesis.'"></textarea>
+            </div>
+
+            <!-- Generate Button -->
+            <button id="generateBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg shadow-md flex items-center justify-center">
+                Generate Alt Text
+                <span id="loadingSpinner" class="loading-spinner hidden"></span>
+            </button>
+
+            <!-- Output Section -->
+            <div id="outputSection" class="space-y-6 mt-8 hidden">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4">Generated Alt Text:</h2>
+
+                <!-- Short Description Output -->
+                <div>
+                    <label class="block text-gray-700 text-sm font-semibold mb-2">Short Description:</label>
+                    <div class="output-box" id="shortDescriptionOutput">
+                        <button class="copy-button" onclick="copyToClipboard('shortDescriptionOutput')">Copy</button>
+                        <span class="output-content"></span>
+                    </div>
+                </div>
+
+                <!-- Detailed Screenreader Explanation Output -->
+                <div>
+                    <label class="block text-gray-700 text-sm font-semibold mb-2">Detailed Screenreader Explanation:</label>
+                    <div class="output-box" id="detailedExplanationOutput">
+                        <button class="copy-button" onclick="copyToClipboard('detailedExplanationOutput')">Copy</button>
+                        <span class="output-content"></span>
+                    </div>
+                </div>
+
+                <!-- Comprehensive Alt Text Output (for Canvas) -->
+                <div>
+                    <label class="block text-gray-700 text-sm font-semibold mb-2">Comprehensive Alt Text (for Canvas):</label>
+                    <div class="output-box" id="comprehensiveAltTextOutput">
+                        <button class="copy-button" onclick="copyToClipboard('comprehensiveAltTextOutput')">Copy</button>
+                        <span class="output-content"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Error Message -->
+            <div id="errorMessage" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg relative" role="alert">
+                <strong class="font-bold">Error!</strong>
+                <span class="block sm:inline" id="errorText"></span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Get references to DOM elements
+        const preText = document.getElementById('preText');
+        const imageUpload = document.getElementById('imageUpload');
+        const imagePreview = document.getElementById('imagePreview');
+        const previewPlaceholder = document.getElementById('previewPlaceholder');
+        const postText = document.getElementById('postText');
+        const generateBtn = document.getElementById('generateBtn');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+        const outputSection = document.getElementById('outputSection');
+        const shortDescriptionOutput = document.getElementById('shortDescriptionOutput').querySelector('.output-content');
+        const detailedExplanationOutput = document.getElementById('detailedExplanationOutput').querySelector('.output-content');
+        const comprehensiveAltTextOutput = document.getElementById('comprehensiveAltTextOutput').querySelector('.output-content');
+        const errorMessage = document.getElementById('errorMessage');
+        const errorText = document.getElementById('errorText');
+
+        // API configurations
+        // IMPORTANT: Leave apiKey as an empty string. Canvas will provide it at runtime.
+        const apiKey = ""; 
+        const geminiApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+        const visionApiUrl = `https://vision.googleapis.com/v1/images:annotate?key=${apiKey}`; // Google Cloud Vision API endpoint
+
+        let base64Image = ''; // Store the Base64 representation of the uploaded image
+
+        // Function to copy text to clipboard
+        function copyToClipboard(elementId) {
+            const element = document.getElementById(elementId).querySelector('.output-content');
+            const textToCopy = element.textContent;
+            try {
+                const textArea = document.createElement('textarea');
+                textArea.value = textToCopy;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                const copyButton = document.getElementById(elementId).querySelector('.copy-button');
+                const originalText = copyButton.textContent;
+                copyButton.textContent = 'Copied!';
+                setTimeout(() => {
+                    copyButton.textContent = originalText;
+                }, 1500);
+            } catch (err) {
+                console.error('Failed to copy text: ', err);
+            }
+        }
+
+        // Function to resize image and convert to Base64
+        function resizeImageAndConvertToBase64(file, callback) {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = new Image();
+                img.onload = function() {
+                    const MAX_WIDTH = 1024; // Max width for resizing
+                    const MAX_HEIGHT = 1024; // Max height for resizing
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > height) {
+                        if (width > MAX_WIDTH) {
+                            height *= MAX_WIDTH / width;
+                            width = MAX_WIDTH;
+                        }
+                    } else {
+                        if (height > MAX_HEIGHT) {
+                            width *= MAX_HEIGHT / height;
+                            height = MAX_HEIGHT;
+                        }
+                    }
+
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    // Convert to JPEG for smaller size, or keep original type if SVG
+                    let outputFormat = 'image/jpeg';
+                    if (file.type === 'image/svg+xml') {
+                        outputFormat = 'image/svg+xml';
+                    }
+                    const dataUrl = canvas.toDataURL(outputFormat, 0.8); // 0.8 quality for JPEG
+
+                    // Extract base64 part
+                    base64Image = dataUrl.split(',')[1];
+                    callback(base64Image);
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Event listener for image upload
+        imageUpload.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                imagePreview.src = URL.createObjectURL(file);
+                imagePreview.classList.remove('hidden');
+                previewPlaceholder.classList.add('hidden');
+                resizeImageAndConvertToBase64(file, (b64) => {
+                    base64Image = b64;
+                    console.log("Image converted to Base64, ready for Vision API.");
+                });
+            } else {
+                imagePreview.classList.add('hidden');
+                previewPlaceholder.classList.remove('hidden');
+                imagePreview.src = '';
+                base64Image = '';
+            }
+        });
+
+        // Function to call Google Cloud Vision API
+        async function callVisionAPI(base64Data) {
+            const visionPayload = {
+                requests: [
+                    {
+                        image: {
+                            content: base64Data
+                        },
+                        features: [
+                            { type: "SAFE_SEARCH_DETECTION" },
+                            { type: "LABEL_DETECTION", maxResults: 5 }, // Get top 5 labels
+                            { type: "TEXT_DETECTION" }, // For OCR
+                            { type: "OBJECT_LOCALIZATION", maxResults: 5 } // For detecting objects
+                        ]
+                    }
+                ]
+            };
+
+            const response = await fetch(visionApiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(visionPayload)
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(`Vision API error: ${response.status} - ${errorData.error.message || 'Unknown error'}`);
+            }
+
+            const result = await response.json();
+            console.log("Vision API Raw Result:", result);
+            return result.responses[0]; // Return the first response object
+        }
+
+        // Function to process Vision API results into a descriptive string
+        function processVisionResults(visionResult) {
+            let descriptionParts = [];
+
+            // Safe Search Check
+            const safeSearch = visionResult.safeSearchAnnotation;
+            if (safeSearch) {
+                const inappropriateLikelihoods = ['LIKELY', 'VERY_LIKELY'];
+                if (inappropriateLikelihoods.includes(safeSearch.adult) ||
+                    inappropriateLikelihoods.includes(safeSearch.violence) ||
+                    inappropriateLikelihoods.includes(safeSearch.racy) ||
+                    inappropriateLikelihoods.includes(safeSearch.medical) ||
+                    inappropriateLikelihoods.includes(safeSearch.spoof)) {
+                    throw new Error('Image content detected as potentially inappropriate or harmful. Please upload a different image.');
+                }
+            }
+
+            // Labels
+            if (visionResult.labelAnnotations && visionResult.labelAnnotations.length > 0) {
+                const labels = visionResult.labelAnnotations.map(label => label.description).join(', ');
+                descriptionParts.push(`Labels: ${labels}.`);
+            }
+
+            // Objects
+            if (visionResult.localizedObjectAnnotations && visionResult.localizedObjectAnnotations.length > 0) {
+                const objects = visionResult.localizedObjectAnnotations.map(obj => obj.name).join(', ');
+                descriptionParts.push(`Detected objects: ${objects}.`);
+            }
+
+            // Text (OCR)
+            if (visionResult.fullTextAnnotation && visionResult.fullTextAnnotation.text) {
+                descriptionParts.push(`Text in image: "${visionResult.fullTextAnnotation.text.replace(/\n/g, ' ')}".`);
+            }
+
+            if (descriptionParts.length === 0) {
+                return "The image appears to be decorative or its content could not be clearly identified.";
+            }
+
+            return descriptionParts.join(' ');
+        }
+
+        // Event listener for the Generate button
+        generateBtn.addEventListener('click', async () => {
+            // Hide previous error messages and outputs
+            errorMessage.classList.add('hidden');
+            outputSection.classList.add('hidden');
+
+            // Show loading spinner and disable button
+            loadingSpinner.classList.remove('hidden');
+            generateBtn.disabled = true;
+            generateBtn.textContent = 'Processing Image...';
+
+            const preTextValue = preText.value.trim();
+            const postTextValue = postText.value.trim();
+
+            // Basic validation
+            if (!preTextValue || !postTextValue || !base64Image) {
+                errorText.textContent = 'Please fill in the pre-text, post-text, and upload an image.';
+                errorMessage.classList.remove('hidden');
+                loadingSpinner.classList.add('hidden');
+                generateBtn.disabled = false;
+                generateBtn.textContent = 'Generate Alt Text';
+                return;
+            }
+
+            let visionDescription = '';
+            try {
+                const visionResult = await callVisionAPI(base64Image);
+                visionDescription = processVisionResults(visionResult);
+                generateBtn.textContent = 'Generating Alt Text...'; // Update button text
+            } catch (error) {
+                console.error('Error with Vision API:', error);
+                errorText.textContent = `Image analysis failed: ${error.message}. Please try a different image or check your API key setup.`;
+                errorMessage.classList.remove('hidden');
+                loadingSpinner.classList.add('hidden');
+                generateBtn.disabled = false;
+                generateBtn.textContent = 'Generate Alt Text';
+                return;
+            }
+
+            // Construct the prompt for Gemini
+            const prompt = `You are an expert in digital accessibility, instructional design, and UK English language conventions. Your role is to generate high-quality, contextually relevant alternative text (alt text) for images. You will produce three distinct outputs in UK English based on provided context and an image's visual description. The 'comprehensiveAltText' must seamlessly blend with the preceding and following paragraphs, acting as a natural bridge without redundancy.
+
+            Pre-Image Paragraph: ${preTextValue}
+            Image Visual Description (derived from image analysis): ${visionDescription}
+            Post-Image Paragraph: ${postTextValue}
+
+            Generate the following:
+            1.  shortDescription: A concise phrase (under 15 words) identifying the image's primary subject or type.
+            2.  detailedScreenreaderExplanation: A comprehensive description (up to 150 words) of the image's key visual elements and its educational relevance, explaining what is in the image and why it's there based on context.
+            3.  comprehensiveAltText: A single string of alt text that seamlessly integrates the educational purpose from the pre-image paragraph with the visual content and leads into the post-image paragraph. This should be a direct continuation of the pre-text, ready for Canvas. If the image is purely decorative and adds no instructional value based on the context, this should be an empty string ("").
+
+            Ensure all spellings and phrasing adhere to UK English conventions.
+            Output format: JSON with keys 'shortDescription', 'detailedScreenreaderExplanation', 'comprehensiveAltText'.`;
+
+            const payload = {
+                contents: [{ role: "user", parts: [{ text: prompt }] }],
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: "OBJECT",
+                        properties: {
+                            "shortDescription": { "type": "STRING" },
+                            "detailedScreenreaderExplanation": { "type": "STRING" },
+                            "comprehensiveAltText": { "type": "STRING" }
+                        },
+                        "propertyOrdering": ["shortDescription", "detailedScreenreaderExplanation", "comprehensiveAltText"]
+                    }
+                }
+            };
+
+            try {
+                const response = await fetch(geminiApiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(`Gemini API error: ${response.status} - ${errorData.error.message || 'Unknown error'}`);
+                }
+
+                const result = await response.json();
+                console.log("Gemini API Raw Result:", result);
+
+                if (result.candidates && result.candidates.length > 0 &&
+                    result.candidates[0].content && result.candidates[0].content.parts &&
+                    result.candidates[0].content.parts.length > 0) {
+                    const jsonString = result.candidates[0].content.parts[0].text;
+                    const parsedJson = JSON.parse(jsonString);
+
+                    shortDescriptionOutput.textContent = parsedJson.shortDescription || 'N/A';
+                    detailedExplanationOutput.textContent = parsedJson.detailedScreenreaderExplanation || 'N/A';
+                    comprehensiveAltTextOutput.textContent = parsedJson.comprehensiveAltText || 'N/A';
+
+                    outputSection.classList.remove('hidden');
+                } else {
+                    throw new Error('Gemini API response structure is unexpected or content is missing.');
+                }
+
+            } catch (error) {
+                console.error('Error generating alt text:', error);
+                errorText.textContent = `Failed to generate alt text: ${error.message}. Please try again.`;
+                errorMessage.classList.remove('hidden');
+            } finally {
+                // Hide loading spinner and enable button
+                loadingSpinner.classList.add('hidden');
+                generateBtn.disabled = false;
+                generateBtn.textContent = 'Generate Alt Text';
+            }
+        });
+    </script>
+</body>
+</html>
