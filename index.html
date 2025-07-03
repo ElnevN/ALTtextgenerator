@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Contextual Alt Text Creator</title>
+    <title>Contextual Alt Text Creator for Any LMS</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
@@ -97,10 +97,11 @@
 </head>
 <body class="p-4">
     <div class="container">
-        <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">Contextual Alt Text Creator</h1>
+        <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">Contextual Alt Text Creator for Any LMS</h1>
         <p class="text-center text-gray-600 mb-8">Generate accessible, context-aware alt text for your images across any Learning Management System. This tool uses surrounding paragraphs and image details to create precise, UK English descriptions that enhance learning for all students, adhering to WCAG 2.1 AA.</p>
 
-        <div class="space-y-6">
+        <!-- Input Section -->
+        <div id="inputSection" class="space-y-6">
             <!-- Pre-Image Paragraph Input -->
             <div>
                 <label for="preText" class="block text-gray-700 text-sm font-semibold mb-2">Paragraph before the image (Pre-Text):</label>
@@ -130,48 +131,55 @@
                 <span id="loadingSpinner" class="loading-spinner hidden"></span>
             </button>
 
-            <!-- Output Section -->
-            <div id="outputSection" class="space-y-6 mt-8 hidden">
-                <h2 class="text-2xl font-bold text-gray-800 mb-4">Generated Alt Text:</h2>
-
-                <!-- Short Description Output -->
-                <div>
-                    <label class="block text-gray-700 text-sm font-semibold mb-2">Short Description:</label>
-                    <div class="output-box" id="shortDescriptionOutput">
-                        <button class="copy-button" onclick="copyToClipboard('shortDescriptionOutput')">Copy</button>
-                        <span class="output-content"></span>
-                    </div>
-                </div>
-
-                <!-- Detailed Screenreader Explanation Output -->
-                <div>
-                    <label class="block text-gray-700 text-sm font-semibold mb-2">Detailed Screenreader Explanation:</label>
-                    <div class="output-box" id="detailedExplanationOutput">
-                        <button class="copy-button" onclick="copyToClipboard('detailedExplanationOutput')">Copy</button>
-                        <span class="output-content"></span>
-                    </div>
-                </div>
-
-                <!-- Comprehensive Alt Text Output -->
-                <div>
-                    <label class="block text-gray-700 text-sm font-semibold mb-2">Comprehensive Alt Text:</label>
-                    <div class="output-box" id="comprehensiveAltTextOutput">
-                        <button class="copy-button" onclick="copyToClipboard('comprehensiveAltTextOutput')">Copy</button>
-                        <span class="output-content"></span>
-                    </div>
-                </div>
-            </div>
-
             <!-- Error Message -->
             <div id="errorMessage" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg relative" role="alert">
                 <strong class="font-bold">Error!</strong>
                 <span class="block sm:inline" id="errorText"></span>
             </div>
         </div>
+
+        <!-- Output Section -->
+        <div id="outputSection" class="space-y-6 mt-8 hidden">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Generated Alt Text:</h2>
+
+            <!-- Short Description Output -->
+            <div>
+                <label class="block text-gray-700 text-sm font-semibold mb-2">Short Description:</label>
+                <div class="output-box" id="shortDescriptionOutputContainer">
+                    <button class="copy-button" onclick="copyToClipboard('shortDescriptionOutputContainer')">Copy</button>
+                    <span class="output-content" id="shortDescriptionOutput"></span>
+                </div>
+            </div>
+
+            <!-- Detailed Screenreader Explanation Output -->
+            <div>
+                <label class="block text-gray-700 text-sm font-semibold mb-2">Detailed Screenreader Explanation:</label>
+                <div class="output-box" id="detailedExplanationOutputContainer">
+                    <button class="copy-button" onclick="copyToClipboard('detailedExplanationOutputContainer')">Copy</button>
+                    <span class="output-content" id="detailedExplanationOutput"></span>
+                </div>
+            </div>
+
+            <!-- Comprehensive Alt Text Output (for Any LMS) -->
+            <div>
+                <label class="block text-gray-700 text-sm font-semibold mb-2">Comprehensive Alt Text (for Any LMS):</label>
+                <div class="output-box" id="comprehensiveAltTextOutputContainer">
+                    <button class="copy-button" onclick="copyToClipboard('comprehensiveAltTextOutputContainer')">Copy</button>
+                    <span class="output-content" id="comprehensiveAltTextOutput"></span>
+                </div>
+            </div>
+
+            <!-- Try Another Option Button -->
+            <button id="resetBtn" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-3 px-6 rounded-lg shadow-md flex items-center justify-center mt-8">
+                Start New Generation
+            </button>
+        </div>
     </div>
 
     <script>
         // Get references to DOM elements
+        const inputSection = document.getElementById('inputSection');
+        const outputSection = document.getElementById('outputSection');
         const preText = document.getElementById('preText');
         const imageUpload = document.getElementById('imageUpload');
         const imagePreview = document.getElementById('imagePreview');
@@ -179,25 +187,25 @@
         const postText = document.getElementById('postText');
         const generateBtn = document.getElementById('generateBtn');
         const loadingSpinner = document.getElementById('loadingSpinner');
-        const outputSection = document.getElementById('outputSection');
-        const shortDescriptionOutput = document.getElementById('shortDescriptionOutput').querySelector('.output-content');
-        const detailedExplanationOutput = document.getElementById('detailedExplanationOutput').querySelector('.output-content');
-        const comprehensiveAltTextOutput = document.getElementById('comprehensiveAltTextOutput').querySelector('.output-content');
+        const shortDescriptionOutput = document.getElementById('shortDescriptionOutput');
+        const detailedExplanationOutput = document.getElementById('detailedExplanationOutput');
+        const comprehensiveAltTextOutput = document.getElementById('comprehensiveAltTextOutput');
         const errorMessage = document.getElementById('errorMessage');
         const errorText = document.getElementById('errorText');
+        const resetBtn = document.getElementById('resetBtn'); // New reset button
 
         // API configurations
         // IMPORTANT: Replace "YOUR_GOOGLE_CLOUD_VISION_API_KEY" with your actual API key for Vision API.
-        // The Gemini API key might still be injected by Canvas, but Vision often needs explicit key.
-        const YOUR_VISION_API_KEY = "AIzaSyDiyVO9fbZw41bpxHeu7nhJ_jDCQKX3gqc"; // <--- PASTE YOUR API KEY HERE
-        const geminiApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${YOUR_VISION_API_KEY}`; // Using the same key for Gemini for simplicity in this context
-        const visionApiUrl = `https://vision.googleapis.com/v1/images:annotate?key=${YOUR_VISION_API_KEY}`; // Google Cloud Vision API endpoint
+        // This API key will be used for both Vision and Gemini API calls in this standalone app.
+        const YOUR_API_KEY = "AIzaSyDiyVO9fbZw41bpxHeu7nhJ_jDCQKX3gqc"; // <--- YOUR API KEY IS ALREADY HERE
+        const geminiApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${YOUR_API_KEY}`;
+        const visionApiUrl = `https://vision.googleapis.com/v1/images:annotate?key=${YOUR_API_KEY}`; 
 
         let base64Image = ''; // Store the Base64 representation of the uploaded image
 
         // Function to copy text to clipboard
-        function copyToClipboard(elementId) {
-            const element = document.getElementById(elementId).querySelector('.output-content');
+        function copyToClipboard(containerId) {
+            const element = document.getElementById(containerId).querySelector('.output-content');
             const textToCopy = element.textContent;
             try {
                 const textArea = document.createElement('textarea');
@@ -206,7 +214,7 @@
                 textArea.select();
                 document.execCommand('copy');
                 document.body.removeChild(textArea);
-                const copyButton = document.getElementById(elementId).querySelector('.copy-button');
+                const copyButton = document.getElementById(containerId).querySelector('.copy-button');
                 const originalText = copyButton.textContent;
                 copyButton.textContent = 'Copied!';
                 setTimeout(() => {
@@ -396,16 +404,16 @@
             }
 
             // Construct the prompt for Gemini
-            const prompt = `You are an expert in digital accessibility, instructional design, and UK English language conventions. Your role is to generate high-quality, contextually relevant alternative text (alt text) for images. You will produce three distinct outputs in UK English based on provided context and an image's visual description. The 'comprehensiveAltText' must seamlessly blend with the preceding and following paragraphs, acting as a natural bridge without redundancy.
+            const prompt = `You are an expert in digital accessibility, instructional design, and UK English language conventions. Your role is to generate high-quality, contextually relevant alternative text (alt text) for images. You will produce three distinct outputs in UK English based on provided context and an image's visual description. The 'comprehensiveAltText' must seamlessly blend with the preceding and following paragraphs, acting as a natural bridge without redundancy. Focus on the most important educational aspects and key takeaways of the image, and how it illustrates or supports the surrounding text.
 
             Pre-Image Paragraph: ${preTextValue}
             Image Visual Description (derived from image analysis): ${visionDescription}
             Post-Image Paragraph: ${postTextValue}
 
             Generate the following:
-            1.  shortDescription: A concise phrase (under 15 words) identifying the image's primary subject or type.
-            2.  detailedScreenreaderExplanation: A comprehensive description (up to 150 words) of the image's key visual elements and its educational relevance, explaining what is in the image and why it's there based on context.
-            3.  comprehensiveAltText: A single string of alt text that seamlessly integrates the educational purpose from the pre-image paragraph with the visual content and leads into the post-image paragraph. This should be a direct continuation of the pre-text. If the image is purely decorative and adds no instructional value based on the context, this should be an empty string ("").
+            1.  shortDescription: A concise phrase (under 15 words) identifying the image's single most important aspect or primary subject, directly relevant to the surrounding text. Avoid introductory phrases such as 'Image of:', 'Picture of:', 'Diagram of:', 'Chart of:', etc.
+            2.  detailedScreenreaderExplanation: A comprehensive description (up to 150 words) of the image's key visual elements and its educational relevance, explaining what is in the image and why it's there based on context. This should highlight the important part identified in the short description but explain everything in more detail, covering all relevant visual information and its connection to the learning content. Avoid introductory phrases such as 'Image of:', 'Picture of:', 'Diagram of:', 'Chart of:', etc.
+            3.  comprehensiveAltText: A single string of alt text that seamlessly integrates the educational purpose from the pre-image paragraph with the visual content and leads into the post-image paragraph. This should be a direct continuation of the pre-text. It should be a concise combination of the most important aspects and relevant details from the image, ensuring it flows naturally with the surrounding prose. If the image is purely decorative and adds no instructional value based on the context, this should be an empty string (""). Avoid introductory phrases such as 'Image of:', 'Picture of:', 'Diagram of:', 'Chart of:', etc.
 
             Ensure all spellings and phrasing adhere to UK English conventions.
             Output format: JSON with keys 'shortDescription', 'detailedScreenreaderExplanation', 'comprehensiveAltText'.`;
@@ -451,6 +459,8 @@
                     detailedExplanationOutput.textContent = parsedJson.detailedScreenreaderExplanation || 'N/A';
                     comprehensiveAltTextOutput.textContent = parsedJson.comprehensiveAltText || 'N/A';
 
+                    // Show outputs, hide inputs
+                    inputSection.classList.add('hidden');
                     outputSection.classList.remove('hidden');
                 } else {
                     throw new Error('Gemini API response structure is unexpected or content is missing.');
@@ -461,11 +471,36 @@
                 errorText.textContent = `Failed to generate alt text: ${error.message}. Please try again.`;
                 errorMessage.classList.remove('hidden');
             } finally {
-                // Hide loading spinner and enable button
-                loadingSpinner.classList.add('hidden');
-                generateBtn.disabled = false;
-                generateBtn.textContent = 'Generate Alt Text';
+                // Hide loading spinner and enable button (only if not transitioning to outputs)
+                if (outputSection.classList.contains('hidden')) { // Only reset if outputs are still hidden
+                    loadingSpinner.classList.add('hidden');
+                    generateBtn.disabled = false;
+                    generateBtn.textContent = 'Generate Alt Text';
+                }
             }
+        });
+
+        // Event listener for the "Start New Generation" button
+        resetBtn.addEventListener('click', () => {
+            // Hide outputs, show inputs
+            outputSection.classList.add('hidden');
+            inputSection.classList.remove('hidden');
+
+            // Clear previous inputs and outputs
+            preText.value = '';
+            postText.value = '';
+            imageUpload.value = ''; // Clear file input
+            imagePreview.classList.add('hidden');
+            previewPlaceholder.classList.remove('hidden');
+            imagePreview.src = '';
+            base64Image = '';
+            shortDescriptionOutput.textContent = '';
+            detailedExplanationOutput.textContent = '';
+            comprehensiveAltTextOutput.textContent = '';
+            errorMessage.classList.add('hidden'); // Hide any lingering error messages
+            errorText.textContent = ''; // Clear error text
+            generateBtn.textContent = 'Generate Alt Text'; // Reset button text
+            generateBtn.disabled = false; // Ensure button is enabled
         });
     </script>
 </body>
