@@ -169,10 +169,17 @@
                 </div>
             </div>
 
-            <!-- Try Another Option Button -->
-            <button id="resetBtn" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-3 px-6 rounded-lg shadow-md flex items-center justify-center mt-8">
-                Start New Generation
-            </button>
+            <div class="flex flex-col sm:flex-row gap-4 mt-8">
+                <!-- Try Again Button -->
+                <button id="tryAgainBtn" class="w-full sm:w-1/2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md flex items-center justify-center">
+                    Try Another Alt Text Option
+                    <span id="tryAgainSpinner" class="loading-spinner hidden"></span>
+                </button>
+                <!-- Start New Generation Button -->
+                <button id="resetBtn" class="w-full sm:w-1/2 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-3 px-6 rounded-lg shadow-md flex items-center justify-center">
+                    Start New Generation
+                </button>
+            </div>
         </div>
     </div>
 
@@ -192,16 +199,19 @@
         const comprehensiveAltTextOutput = document.getElementById('comprehensiveAltTextOutput');
         const errorMessage = document.getElementById('errorMessage');
         const errorText = document.getElementById('errorText');
-        const resetBtn = document.getElementById('resetBtn'); // New reset button
+        const resetBtn = document.getElementById('resetBtn');
+        const tryAgainBtn = document.getElementById('tryAgainBtn'); // New Try Again button
+        const tryAgainSpinner = document.getElementById('tryAgainSpinner'); // New Try Again spinner
 
         // API configurations
-        // IMPORTANT: Replace "YOUR_GOOGLE_CLOUD_VISION_API_KEY" with your actual API key for Vision API.
-        // This API key will be used for both Vision and Gemini API calls in this standalone app.
         const YOUR_API_KEY = "AIzaSyDiyVO9fbZw41bpxHeu7nhJ_jDCQKX3gqc"; // <--- YOUR API KEY IS ALREADY HERE
         const geminiApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${YOUR_API_KEY}`;
         const visionApiUrl = `https://vision.googleapis.com/v1/images:annotate?key=${YOUR_API_KEY}`; 
 
         let base64Image = ''; // Store the Base64 representation of the uploaded image
+        let lastPreTextValue = '';
+        let lastPostTextValue = '';
+        let lastVisionDescription = '';
 
         // Function to copy text to clipboard
         function copyToClipboard(containerId) {
@@ -366,51 +376,25 @@
             return descriptionParts.join(' ');
         }
 
-        // Event listener for the Generate button
-        generateBtn.addEventListener('click', async () => {
-            // Hide previous error messages and outputs
-            errorMessage.classList.add('hidden');
-            outputSection.classList.add('hidden');
-
-            // Show loading spinner and disable button
-            loadingSpinner.classList.remove('hidden');
-            generateBtn.disabled = true;
-            generateBtn.textContent = 'Processing Image...';
-
-            const preTextValue = preText.value.trim();
-            const postTextValue = postText.value.trim();
-
-            // Basic validation
-            if (!preTextValue || !postTextValue || !base64Image) {
-                errorText.textContent = 'Please fill in the pre-text, post-text, and upload an image.';
-                errorMessage.classList.remove('hidden');
-                loadingSpinner.classList.add('hidden');
-                generateBtn.disabled = false;
-                generateBtn.textContent = 'Generate Alt Text';
-                return;
-            }
-
-            let visionDescription = '';
-            try {
-                const visionResult = await callVisionAPI(base64Image);
-                visionDescription = processVisionResults(visionResult);
-                generateBtn.textContent = 'Generating Alt Text...'; // Update button text
-            } catch (error) {
-                console.error('Error with Vision API:', error);
-                errorText.textContent = `Image analysis failed: ${error.message}. Please try a different image or check your API key setup.`;
-                errorMessage.classList.remove('hidden');
-                loadingSpinner.classList.add('hidden');
-                generateBtn.disabled = false;
-                generateBtn.textContent = 'Generate Alt Text';
-                return;
+        // Function to call Gemini API for alt text generation
+        async function generateAltText(preTextVal, visionDesc, postTextVal, isTryAgain = false) {
+            // Show appropriate spinner and disable button
+            if (isTryAgain) {
+                tryAgainSpinner.classList.remove('hidden');
+                tryAgainBtn.disabled = true;
+                tryAgainBtn.textContent = 'Generating...';
+            } else {
+                loadingSpinner.classList.remove('hidden');
+                generateBtn.disabled = true;
+                generateBtn.textContent = 'Processing Image...';
             }
 
             // Construct the prompt for Gemini
             const prompt = `You are an expert in digital accessibility, instructional design, and UK English language conventions. Your role is to generate high-quality, contextually relevant alternative text (alt text) for images. You will produce three distinct outputs in UK English based on provided context and an image's visual description. The 'comprehensiveAltText' must seamlessly blend with the preceding and following paragraphs, acting as a natural bridge without redundancy. Focus on the most important educational aspects and key takeaways of the image, and how it illustrates or supports the surrounding text.
 
-            Pre-Image Paragraph: ${preTextValue}
-            Image Visual Description (derived from image analysis): ${visionDescription}
-            Post-Image Paragraph: ${postTextValue}
+            Pre-Image Paragraph: ${preTextVal}
+            Image Visual Description (derived from image analysis): ${visionDesc}
+            Post-Image Paragraph: ${postTextVal}
 
             Generate the following:
             1.  shortDescription: A concise phrase (under 15 words) identifying the image's single most important aspect or primary subject, directly relevant to the surrounding text. This should be the core takeaway. Avoid introductory phrases such as 'Image of:', 'Picture of:', 'Diagram of:', 'Chart of:', etc.
@@ -461,9 +445,11 @@
                     detailedExplanationOutput.textContent = parsedJson.detailedScreenreaderExplanation || 'N/A';
                     comprehensiveAltTextOutput.textContent = parsedJson.comprehensiveAltText || 'N/A';
 
-                    // Show outputs, hide inputs
-                    inputSection.classList.add('hidden');
-                    outputSection.classList.remove('hidden');
+                    // Show outputs, hide inputs if it's the initial generation
+                    if (!isTryAgain) {
+                        inputSection.classList.add('hidden');
+                        outputSection.classList.remove('hidden');
+                    }
                 } else {
                     throw new Error('Gemini API response structure is unexpected or content is missing.');
                 }
@@ -473,14 +459,77 @@
                 errorText.textContent = `Failed to generate alt text: ${error.message}. Please try again.`;
                 errorMessage.classList.remove('hidden');
             } finally {
-                // Hide loading spinner and enable button (only if not transitioning to outputs)
-                if (outputSection.classList.contains('hidden')) { // Only reset if outputs are still hidden
-                    loadingSpinner.classList.add('hidden');
-                    generateBtn.disabled = false;
-                    generateBtn.textContent = 'Generate Alt Text';
-                }
+                // Hide loading spinners and enable buttons
+                loadingSpinner.classList.add('hidden');
+                generateBtn.disabled = false;
+                generateBtn.textContent = 'Generate Alt Text';
+
+                tryAgainSpinner.classList.add('hidden');
+                tryAgainBtn.disabled = false;
+                tryAgainBtn.textContent = 'Try Another Alt Text Option';
+            }
+        }
+
+        // Event listener for the initial Generate button
+        generateBtn.addEventListener('click', async () => {
+            // Hide previous error messages and outputs
+            errorMessage.classList.add('hidden');
+            outputSection.classList.add('hidden');
+
+            // Store current input values before processing
+            lastPreTextValue = preText.value.trim();
+            lastPostTextValue = postText.value.trim();
+            // base64Image is already global
+
+            // Basic validation
+            if (!lastPreTextValue || !lastPostTextValue || !base64Image) {
+                errorText.textContent = 'Please fill in the pre-text, post-text, and upload an image.';
+                errorMessage.classList.remove('hidden');
+                loadingSpinner.classList.add('hidden');
+                generateBtn.disabled = false;
+                generateBtn.textContent = 'Generate Alt Text';
+                return;
+            }
+
+            let visionDescription = '';
+            try {
+                loadingSpinner.classList.remove('hidden');
+                generateBtn.disabled = true;
+                generateBtn.textContent = 'Processing Image...';
+
+                const visionResult = await callVisionAPI(base64Image);
+                visionDescription = processVisionResults(visionResult);
+                lastVisionDescription = visionDescription; // Store vision description
+                
+                // Now call Gemini
+                await generateAltText(lastPreTextValue, lastVisionDescription, lastPostTextValue, false);
+
+            } catch (error) {
+                console.error('Error with Vision API or initial generation:', error);
+                errorText.textContent = `Image analysis failed: ${error.message}. Please try a different image or check your API key setup.`;
+                errorMessage.classList.remove('hidden');
+                loadingSpinner.classList.add('hidden');
+                generateBtn.disabled = false;
+                generateBtn.textContent = 'Generate Alt Text';
             }
         });
+
+        // Event listener for the "Try Another Option" button
+        tryAgainBtn.addEventListener('click', async () => {
+            // Hide previous error messages
+            errorMessage.classList.add('hidden');
+
+            // Ensure we have stored values to try again
+            if (!lastPreTextValue || !lastPostTextValue || !base64Image || !lastVisionDescription) {
+                errorText.textContent = 'No previous generation data found. Please start a new generation.';
+                errorMessage.classList.remove('hidden');
+                return;
+            }
+
+            // Call Gemini again with stored values
+            await generateAltText(lastPreTextValue, lastVisionDescription, lastPostTextValue, true);
+        });
+
 
         // Event listener for the "Start New Generation" button
         resetBtn.addEventListener('click', () => {
@@ -496,6 +545,9 @@
             previewPlaceholder.classList.remove('hidden');
             imagePreview.src = '';
             base64Image = '';
+            lastPreTextValue = ''; // Clear stored values
+            lastPostTextValue = '';
+            lastVisionDescription = '';
             shortDescriptionOutput.textContent = '';
             detailedExplanationOutput.textContent = '';
             comprehensiveAltTextOutput.textContent = '';
