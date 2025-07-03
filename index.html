@@ -160,7 +160,7 @@
                 </div>
             </div>
 
-            <!-- Comprehensive Alt Text Output  -->
+            <!-- Comprehensive Alt Text Output -->
             <div>
                 <label class="block text-gray-700 text-sm font-semibold mb-2">Comprehensive Alt Text:</label>
                 <div class="output-box" id="comprehensiveAltTextOutputContainer">
@@ -354,7 +354,9 @@
 
             // Text (OCR)
             if (visionResult.fullTextAnnotation && visionResult.fullTextAnnotation.text) {
-                descriptionParts.push(`Text in image: "${visionResult.fullTextAnnotation.text.replace(/\n/g, ' ')}".`);
+                // Extract all detected text, replace newlines with spaces for a single line
+                const detectedText = visionResult.fullTextAnnotation.text.replace(/\n/g, ' ');
+                descriptionParts.push(`Text in image: "${detectedText}".`);
             }
 
             if (descriptionParts.length === 0) {
@@ -411,8 +413,8 @@
             Post-Image Paragraph: ${postTextValue}
 
             Generate the following:
-            1.  shortDescription: A concise phrase (under 15 words) identifying the image's single most important aspect or primary subject, directly relevant to the surrounding text. Avoid introductory phrases such as 'Image of:', 'Picture of:', 'Diagram of:', 'Chart of:', etc.
-            2.  detailedScreenreaderExplanation: A comprehensive description (up to 150 words) of the image's key visual elements and its educational relevance, explaining what is in the image and why it's there based on context. This should highlight the important part identified in the short description but explain everything in more detail, covering all relevant visual information and its connection to the learning content. Avoid introductory phrases such as 'Image of:', 'Picture of:', 'Diagram of:', 'Chart of:', etc.
+            1.  shortDescription: A concise phrase (under 15 words) identifying the image's single most important aspect or primary subject, directly relevant to the surrounding text. This should be the core takeaway. Avoid introductory phrases such as 'Image of:', 'Picture of:', 'Diagram of:', 'Chart of:', etc.
+            2.  detailedScreenreaderExplanation: A comprehensive description (up to 150 words) of the image's key visual elements and its educational relevance, explaining what is in the image and why it's there based on context. This should highlight the important part identified in the short description but explain everything in more detail, including all relevant textual labels, numbers, and structural elements (e.g., week numbers, topic titles, progression) that contribute to the educational message. Avoid introductory phrases such as 'Image of:', 'Picture of:', 'Diagram of:', 'Chart of:', etc.
             3.  comprehensiveAltText: A single string of alt text that seamlessly integrates the educational purpose from the pre-image paragraph with the visual content and leads into the post-image paragraph. This should be a direct continuation of the pre-text. It should be a concise combination of the most important aspects and relevant details from the image, ensuring it flows naturally with the surrounding prose. If the image is purely decorative and adds no instructional value based on the context, this should be an empty string (""). Avoid introductory phrases such as 'Image of:', 'Picture of:', 'Diagram of:', 'Chart of:', etc.
 
             Ensure all spellings and phrasing adhere to UK English conventions.
